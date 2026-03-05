@@ -1,0 +1,129 @@
+// ===================================
+// IHSAN — Prisma Schema
+// SupNum Coding Challenge S3C'1447
+// ===================================
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+// ─────────────────────────────────
+// ENUMS
+// ─────────────────────────────────
+
+enum Role {
+  DONOR
+  VALIDATOR
+  PARTNER
+  ADMIN
+}
+
+enum NeedType {
+  IFTAR
+  MEDICAL
+  FOOD
+  OTHER
+}
+
+enum NeedStatus {
+  OPEN
+  FUNDED
+  DELIVERED
+}
+
+enum DonationStatus {
+  PENDING
+  CONFIRMED
+}
+
+// ─────────────────────────────────
+// MODELS
+// ─────────────────────────────────
+
+model User {
+  id              String   @id @default(uuid())
+  name            String
+  email           String   @unique
+  password        String
+  role            Role     @default(DONOR)
+  reputationScore Float    @default(5.0)
+  createdAt       DateTime @default(now())
+
+  // Relations
+  needs           Need[]
+  donations       Donation[]
+  beneficiaries   Beneficiary[]
+
+  @@map("users")
+}
+
+model Beneficiary {
+  id           String   @id @default(uuid())
+  registeredBy String
+  neighborhood String
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+
+  // Relations
+  registeredByUser User @relation(fields: [registeredBy], references: [id])
+
+  @@map("beneficiaries")
+}
+
+model Need {
+  id             String     @id @default(uuid())
+  title          String
+  description    String
+  type           NeedType   @default(OTHER)
+  amountRequired Float
+  neighborhood   String
+  latitude       Float?
+  longitude      Float?
+  status         NeedStatus @default(OPEN)
+  validatorId    String
+  createdAt      DateTime   @default(now())
+
+  // Relations
+  validator      User       @relation(fields: [validatorId], references: [id])
+  donations      Donation[]
+
+  @@map("needs")
+}
+
+model Donation {
+  id              String         @id @default(uuid())
+  donorId         String
+  needId          String
+  amount          Float
+  transactionHash String         @unique
+  blockchainHash  String?
+  status          DonationStatus @default(PENDING)
+  createdAt       DateTime       @default(now())
+  confirmedAt     DateTime?
+
+  // Relations
+  donor           User           @relation(fields: [donorId], references: [id])
+  need            Need           @relation(fields: [needId], references: [id])
+  impactProof     ImpactProof?
+
+  @@map("donations")
+}
+
+model ImpactProof {
+  id                  Int      @id @default(autoincrement())
+  donationId          String   @unique
+  photoUrl            String?
+  confirmationMessage String
+  createdAt           DateTime @default(now())
+
+  // Relations
+  donation            Donation @relation(fields: [donationId], references: [id])
+
+  @@map("impact_proofs")
+}
